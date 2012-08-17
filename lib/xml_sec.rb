@@ -31,7 +31,6 @@ require "digest/sha1"
 
 module XMLSecurity
   extend FFI::Library
-  ffi_lib "xmlsec1-openssl"
 
   enum :xmlSecKeyDataFormat, [
       :xmlSecKeyDataFormatUnknown,
@@ -170,38 +169,44 @@ module XMLSecurity
       :reserved1,                   :pointer
   end
 
-  # xmlsec functions
-  attach_function :xmlSecInit, [], :int
-  attach_function :xmlSecParseMemory, [ :pointer, :uint, :int ], :pointer
-  attach_function :xmlSecFindNode, [ :pointer, :string, :string ], :pointer
-  attach_function :xmlSecDSigCtxCreate, [ :pointer ], XmlSecDSigCtx.by_ref
-  attach_function :xmlSecDSigCtxVerify, [ XmlSecDSigCtx.by_ref, :pointer ], :int
-  attach_function :xmlSecOpenSSLInit, [], :int
-  attach_function :xmlSecOpenSSLAppInit, [ :pointer ], :int
-  attach_function :xmlSecAddIDs, [ :pointer, :pointer, :pointer ], :void
-  attach_function :xmlSecDSigCtxDestroy, [ XmlSecDSigCtx.by_ref ], :void
+  begin
+    ffi_lib "xmlsec1-openssl"
 
-  attach_function :xmlSecKeysMngrCreate, [], :pointer
-  attach_function :xmlSecOpenSSLAppDefaultKeysMngrInit, [ :pointer ], :int
-  attach_function :xmlSecOpenSSLAppKeyLoad, [ :string, :xmlSecKeyDataFormat, :pointer, :pointer, :pointer ], :pointer
-  attach_function :xmlSecOpenSSLAppKeyLoadMemory, [ :pointer, :uint, :xmlSecKeyDataFormat, :pointer, :pointer, :pointer ], :pointer
-  attach_function :xmlSecOpenSSLAppDefaultKeysMngrAdoptKey, [ :pointer, :pointer ], :int
-  attach_function :xmlSecKeysMngrDestroy, [ :pointer ], :void
+    # xmlsec functions
+    attach_function :xmlSecInit, [], :int
+    attach_function :xmlSecParseMemory, [ :pointer, :uint, :int ], :pointer
+    attach_function :xmlSecFindNode, [ :pointer, :string, :string ], :pointer
+    attach_function :xmlSecDSigCtxCreate, [ :pointer ], XmlSecDSigCtx.by_ref
+    attach_function :xmlSecDSigCtxVerify, [ XmlSecDSigCtx.by_ref, :pointer ], :int
+    attach_function :xmlSecOpenSSLInit, [], :int
+    attach_function :xmlSecOpenSSLAppInit, [ :pointer ], :int
+    attach_function :xmlSecAddIDs, [ :pointer, :pointer, :pointer ], :void
+    attach_function :xmlSecDSigCtxDestroy, [ XmlSecDSigCtx.by_ref ], :void
 
-  attach_function :xmlSecEncCtxCreate, [ :pointer ], :pointer
-  attach_function :xmlSecEncCtxDecrypt, [ :pointer, :pointer ], :int
-  attach_function :xmlSecEncCtxDestroy, [ :pointer ], :void
+    attach_function :xmlSecKeysMngrCreate, [], :pointer
+    attach_function :xmlSecOpenSSLAppDefaultKeysMngrInit, [ :pointer ], :int
+    attach_function :xmlSecOpenSSLAppKeyLoad, [ :string, :xmlSecKeyDataFormat, :pointer, :pointer, :pointer ], :pointer
+    attach_function :xmlSecOpenSSLAppKeyLoadMemory, [ :pointer, :uint, :xmlSecKeyDataFormat, :pointer, :pointer, :pointer ], :pointer
+    attach_function :xmlSecOpenSSLAppDefaultKeysMngrAdoptKey, [ :pointer, :pointer ], :int
+    attach_function :xmlSecKeysMngrDestroy, [ :pointer ], :void
 
-  # libxml functions
-  attach_function :xmlInitParser, [], :void
-  attach_function :xmlDocGetRootElement, [ :pointer ], :pointer
-  attach_function :xmlDocDumpFormatMemory, [ :pointer, :pointer, :pointer, :int ], :void
-  attach_function :xmlFreeDoc, [ :pointer ], :void
+    attach_function :xmlSecEncCtxCreate, [ :pointer ], :pointer
+    attach_function :xmlSecEncCtxDecrypt, [ :pointer, :pointer ], :int
+    attach_function :xmlSecEncCtxDestroy, [ :pointer ], :void
 
-  self.xmlInitParser
-  raise "Failed initializing XMLSec" if self.xmlSecInit < 0
-  raise "Failed initializing app crypto" if self.xmlSecOpenSSLAppInit(nil) < 0
-  raise "Failed initializing crypto" if self.xmlSecOpenSSLInit < 0
+    # libxml functions
+    attach_function :xmlInitParser, [], :void
+    attach_function :xmlDocGetRootElement, [ :pointer ], :pointer
+    attach_function :xmlDocDumpFormatMemory, [ :pointer, :pointer, :pointer, :int ], :void
+    attach_function :xmlFreeDoc, [ :pointer ], :void
+
+    self.xmlInitParser
+    raise "Failed initializing XMLSec" if self.xmlSecInit < 0
+    raise "Failed initializing app crypto" if self.xmlSecOpenSSLAppInit(nil) < 0
+    raise "Failed initializing crypto" if self.xmlSecOpenSSLInit < 0
+  rescue Exception
+     Rails.logger.error "libxmlsec1 could not be loaded; saml auth support will not function"
+  end
 
   module SignedDocument
     attr_reader :validation_error
